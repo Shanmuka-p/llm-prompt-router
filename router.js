@@ -31,4 +31,36 @@ async function classify_intent(message) {
     }
 }
 
-module.exports = { classify_intent, prompts, openai };
+// Append this to router.js
+
+async function route_and_respond(message, intentObj) {
+    const { intent, confidence } = intentObj;
+    let finalResponse = "";
+
+    // Fulfills requirement: Do not guess if unclear, ask clarification
+    if (intent === "unclear" || !prompts[intent]) {
+        finalResponse = "Are you asking for help with coding, data analysis, writing, or career advice?";
+    } else {
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                { role: "system", content: prompts[intent] },
+                { role: "user", content: message }
+            ],
+            temperature: 0.7
+        });
+        finalResponse = response.choices[0].message.content;
+    }
+
+    log_route(intent, confidence, message, finalResponse);
+    return finalResponse;
+}
+
+function log_route(intent, confidence, user_message, final_response) {
+    const logEntry = { intent, confidence, user_message, final_response };
+    fs.appendFileSync('route_log.jsonl', JSON.stringify(logEntry) + '\n');
+}
+
+
+
+module.exports = { classify_intent, prompts, openai , route_and_respond };
