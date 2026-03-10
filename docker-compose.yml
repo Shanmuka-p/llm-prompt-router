@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  router-app:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      # This ensures the log file generated inside the container saves to your local machine
+      - ./route_log.jsonl:/usr/src/app/route_log.jsonl
