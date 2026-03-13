@@ -1,1 +1,108 @@
-readme.md
+# LLM Prompt Router
+
+## Overview
+
+This project is a Node.js service that intelligently routes user requests to specialized AI personas. It demonstrates a fundamental production pattern for creating sophisticated, multi-purpose AI applications. Instead of relying on a single, monolithic prompt, this system first classifies the user's intent and then delegates the request to a focused 'expert' persona, resulting in more accurate and context-aware responses.
+
+The implementation uses the Google Gemini API for both classification and response generation.
+
+## How It Works
+
+The system follows a two-step "Classify, then Respond" process:
+
+1.  **Classify**: A lightweight, inexpensive LLM call classifies the user's intent. The prompt for this call is engineered to be short and focused, instructing the model to return only a JSON object identifying the user's intent and a confidence score (e.g., `{ "intent": "code", "confidence": 0.92 }`). This call is optimized for speed and cost by using Gemini's forced JSON output feature.
+
+2.  **Respond**: The classified intent is used to select a highly specialized system prompt from a predefined collection of 'expert personas'. A second, more detailed LLM call is then made, combining the specialized system prompt with the user's message to generate a high-quality, context-aware response.
+
+```
+User Message -> [Classifier LLM Call] -> Intent Label -> [Router] -> Expert System Prompt -> [Generator LLM Call] -> Final Response
+```
+
+## Features
+
+-   **Intent Classification**: Determines the user's goal (e.g., `code`, `data`, `writing`, `career`).
+-   **Dynamic Prompt Routing**: Selects the appropriate AI persona based on the classified intent.
+-   **Expert Personas**: Utilizes a collection of distinct system prompts for different tasks (see `prompts.json`).
+-   **Structured JSON Output**: Forces the classifier LLM to return valid, structured JSON, with graceful error handling for malformed responses.
+-   **Confidence-Based Fallback**: A confidence threshold is used to treat low-confidence classifications as `unclear`, preventing incorrect routing.
+-   **Request Logging**: All routing decisions, confidence scores, and final responses are logged to `route_log.jsonl` for observability.
+-   **Containerized**: Comes with a `Dockerfile` and `docker-compose.yml` for easy setup and deployment.
+
+## Getting Started
+
+### Prerequisites
+
+-   [Docker](https://www.docker.com/get-started) and Docker Compose
+-   [Node.js](https://nodejs.org/en/) (for local development)
+-   A Google Gemini API Key. You can get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
+
+### Installation & Configuration
+
+1.  **Clone the repository:**
+    ```sh
+    git clone <your-repository-url>
+    cd llm-prompt-router
+    ```
+
+2.  **Set up environment variables:**
+    Create a `.env` file by copying the example file.
+    ```sh
+    cp .env.example .env
+    ```
+    Open the `.env` file and add your Google Gemini API key:
+    ```
+    GEMINI_API_KEY=your_gemini_api_key_here
+    ```
+
+### Running the Service
+
+You can run the test suite, which processes a series of predefined messages, using Docker Compose.
+
+```sh
+docker-compose up --build
+```
+
+This command builds the Docker image and runs the `test.js` script inside the container. You will see the classification results printed to the console, and the full log will be written to `route_log.jsonl`.
+
+## Usage
+
+The core logic is encapsulated in two functions within `router.js`:
+
+-   `classify_intent(message: string)`: Takes a user message and returns a promise that resolves to an intent object (e.g., `{ intent: 'code', confidence: 0.9 }`).
+-   `route_and_respond(message: string, intentObj: object)`: Takes the original message and the intent object, and returns the final response from the expert persona.
+
+The `test.js` file provides a practical example of how to use these functions to process a list of messages.
+
+## Project Structure
+
+```
+.
+├── .env.example          # Example environment variables
+├── .gitignore
+├── docker-compose.yml    # Docker Compose file for running the service
+├── Dockerfile            # Instructions for building the Docker image
+├── package.json          # Node.js project metadata and dependencies
+├── prompts.json          # Configuration file for expert system prompts
+├── route_log.jsonl       # Output log file for all requests
+├── router.js             # Core application logic for classification and routing
+└── test.js               # Test script to run sample messages through the router
+```
+
+## Logging
+
+Every request is logged as a JSON object on a new line in the `route_log.jsonl` file. This allows for easy parsing and analysis of the router's performance over time.
+
+Each log entry contains:
+-   `intent`: The classified intent.
+-   `confidence`: The confidence score from the classifier.
+-   `user_message`: The original message from the user.
+-   `final_response`: The response generated by the expert persona.
+-   `timestamp`: The ISO 8601 timestamp of the request.
+
+## Testing
+
+To run the predefined test suite, simply run the `docker-compose up` command as described in the "Running the Service" section. The `test.js` script will be executed automatically.
+
+The script processes 15 sample messages covering a range of intents and edge cases. A 5-second delay is included between API calls to respect the default rate limits of the Gemini API free tier.
+
+Check the console output and the `route_log.jsonl` file to verify the results.
