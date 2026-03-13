@@ -40,7 +40,7 @@ User Message -> [Classifier LLM Call] -> Intent Label -> [Router] -> Expert Syst
 
 1.  **Clone the repository:**
     ```sh
-    git clone <your-repository-url>
+    git clone https://github.com/Shanmuka-p/llm-prompt-router.git
     cd llm-prompt-router
     ```
 
